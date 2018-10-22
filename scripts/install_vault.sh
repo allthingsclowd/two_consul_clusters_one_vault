@@ -1,6 +1,87 @@
 #!/usr/bin/env bash
 set -x
+
+create_consulforvault_service_user () {
+  
+  if ! grep consulforvault /etc/passwd >/dev/null 2>&1; then
+    echo "Creating consul user to run the consul service"
+    sudo useradd --system --home /etc/consulforvault.d --shell /bin/false consulforvault
+    sudo mkdir --parents /opt/consulforvault /usr/local/consulforvault /etc/consulforvault.d
+    sudo chown --recursive consulforvault:consulforvault /opt/consulforvault /etc/consulforvault.d /usr/local/consulforvault
+  fi
+
+}
+
+register_vault_service_with_SD_consul_cluster () {
+    
+    echo 'Start to register Vault service with Consul Service Discovery'
+
+    cat <<EOF | sudo tee /etc/consul.d/vaultalternateconsul.json
+{
+    "service":{
+    "name": "vault",
+    "address": "${LEADER_IP}",
+    "port": 8200,
+    "check":  {
+        "http": "http://${LEADER_IP}:8200/v1/sys/health",
+        "interval": "10s",
+        "timeout": "5s"
+        }
+    }
+}
+EOF
+  
+  # Register the service in consul via the local Consul agent api
+  consul reload
+  sleep 5
+
+  # List the locally registered services via local Consul api
+  curl -s \
+    -v \
+    http://127.0.0.1:8500/v1/agent/services | jq -r .
+
+  # List the services regestered on the Consul server
+  curl -s \
+  -v \
+  http://${LEADER_IP}:8500/v1/catalog/services | jq -r .
+   
+    echo 'Register service with Consul Service Discovery Complete'
+}
+
+install_consul_as_backend_for_vault () {
+  AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
+  
+  # check for consul hostname or travis => server
+  if [[ "${HOSTNAME}" =~ "leader" ]] || [ "${TRAVIS}" == "true" ]; then
+    echo "Starting a Consul Server for Vault Use"
+
+    if [ "${TRAVIS}" == "true" ]; then
+      COUNTER=0
+      HOSTURL="http://${IP}:808${COUNTER}/health"
+      sudo cp /usr/local/bootstrap/conf/consul.d/redis.json /etc/consul.d/redis.json
+      CONSUL_SCRIPTS="scripts"
+      # ensure all scripts are executable for consul health checks
+      pushd ${CONSUL_SCRIPTS}
+      for file in `ls`;
+        do
+          sudo chmod +x $file
+        done
+      popd
+    fi
+
+    sudo -u consulforvault cp -r /usr/local/bootstrap/conf/consulforvault.d/* /etc/consulforvault.d/.
+    sudo -u consulforvault /usr/local/bin/consul agent -server -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -bootstrap-expect=1 >${CVLOG} &
+
+    sleep 5
+
+  fi
+
+  echo "Consul Service for VAULT Started"
+}
+
 setup_environment () {
+
+    source /usr/local/bootstrap/var.env
     
     echo 'Start Setup of Vault Environment'
     IFACE=`route -n | awk '$1 == "192.168.2.0" {print $8}'`
@@ -8,9 +89,11 @@ setup_environment () {
     IP=${CIDR%%/24}
 
     if [ -d /vagrant ]; then
+        CVLOG="/vagrant/logs/consulforvault_${HOSTNAME}.log"
         LOG="/vagrant/logs/vault_${HOSTNAME}.log"
         AUDIT_LOG="/vagrant/logs/vault_audit_${HOSTNAME}.log"
     else
+        CVLOG="consulvault.log"
         LOG="vault.log"
         AUDIT_LOG="vault_audit.log"
     fi
@@ -389,6 +472,8 @@ install_vault () {
     # verify it's either the TRAVIS server or the Vault server
     if [[ "${HOSTNAME}" =~ "leader" ]] || [ "${TRAVIS}" == "true" ]; then
         #lets kill past instance
+        create_consulforvault_service_user
+        install_consul_as_backend_for_vault
         sudo killall vault &>/dev/null
 
         #lets delete old consul storage
@@ -398,9 +483,10 @@ install_vault () {
         [ -f /usr/local/bootstrap/.vault-token ] && sudo rm /usr/local/bootstrap/.vault-token
 
         #start vault
-        sudo /usr/local/bin/vault server  -dev -dev-listen-address=${IP}:8200 -config=/usr/local/bootstrap/conf/vault.hcl &> ${LOG} &
+        sudo /usr/local/bin/vault server  -dev -dev-listen-address=${IP}:8200 -config=/usr/local/bootstrap/conf/vault.d/vault.hcl &> ${LOG} &
         echo vault started
         sleep 3 
+        
         
         #copy token to known location
         sudo find / -name '.vault-token' -exec cp {} /usr/local/bootstrap/.vault-token \; -quit
@@ -415,6 +501,7 @@ install_vault () {
         get_secret_id
         get_approle_id
         verify_approle_credentials
+        register_vault_service_with_SD_consul_cluster
     fi
     
     echo 'Installation of Vault Finished'
@@ -422,3 +509,4 @@ install_vault () {
 
 setup_environment
 install_vault
+
