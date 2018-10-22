@@ -52,7 +52,7 @@ install_consul_as_backend_for_vault () {
   AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
   
   # check for consul hostname or travis => server
-  if [[ "${HOSTNAME}" =~ "leader" ]] || [ "${TRAVIS}" == "true" ]; then
+  if [[ "${HOSTNAME}" =~ "vault" ]] || [ "${TRAVIS}" == "true" ]; then
     echo "Starting a Consul Server for Vault Use"
 
     if [ "${TRAVIS}" == "true" ]; then

@@ -17,6 +17,7 @@ setup_environment () {
   if [ "${TRAVIS}" == "true" ]; then
     IP="127.0.0.1"
     LEADER_IP=${IP}
+    VAULT_IP=${IP}
   fi
 
 }
@@ -54,7 +55,7 @@ EOF
 
 configure_redis () {
   sudo echo "${REDIS_MASTER_IP}     ${REDIS_MASTER_NAME}" >> /etc/hosts
-  sudo VAULT_TOKEN=`cat /usr/local/bootstrap/.database-token` VAULT_ADDR="http://${LEADER_IP}:8200" consul-template -template "/usr/local/bootstrap/conf/master.redis.ctpl:/etc/redis/redis.conf" -once
+  sudo VAULT_TOKEN=`cat /usr/local/bootstrap/.database-token` VAULT_ADDR="http://${VAULT_IP}:8200" consul-template -template "/usr/local/bootstrap/conf/master.redis.ctpl:/etc/redis/redis.conf" -once
   sudo chown redis:redis /etc/redis/redis.conf
   sudo chmod 640 /etc/redis/redis.conf
   # restart redis, register the service with consul and restart consul agent
