@@ -1,5 +1,38 @@
 #!/usr/bin/env bash
 set -x
+
+install_consul_as_backend_for_vault () {
+  AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
+  
+  # check for consul hostname or travis => server
+  if [[ "${HOSTNAME}" =~ "leader" ]] || [ "${TRAVIS}" == "true" ]; then
+    echo "Starting a Consul Server for Vault Use"
+
+    if [ "${TRAVIS}" == "true" ]; then
+      COUNTER=0
+      HOSTURL="http://${IP}:808${COUNTER}/health"
+      sudo cp /usr/local/bootstrap/conf/consul.d/redis.json /etc/consul.d/redis.json
+      CONSUL_SCRIPTS="scripts"
+      # ensure all scripts are executable for consul health checks
+      pushd ${CONSUL_SCRIPTS}
+      for file in `ls`;
+        do
+          sudo chmod +x $file
+        done
+      popd
+    fi
+
+    /usr/local/bin/consul members 2>/dev/null || {
+        sudo -u consul cp -r /usr/local/bootstrap/conf/consulforvault.d/* /etc/consulforvault.d/.
+        sudo -u consul /usr/local/bin/consul agent -server -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -bootstrap-expect=1 >${CVLOG} &
+      
+      sleep 5
+    }
+  fi
+
+  echo "Consul Service for VAULT Started"
+}
+
 setup_environment () {
     
     echo 'Start Setup of Vault Environment'
@@ -8,9 +41,11 @@ setup_environment () {
     IP=${CIDR%%/24}
 
     if [ -d /vagrant ]; then
+        CVLOG="/vagrant/logs/consulforvault_${HOSTNAME}.log"
         LOG="/vagrant/logs/vault_${HOSTNAME}.log"
         AUDIT_LOG="/vagrant/logs/vault_audit_${HOSTNAME}.log"
     else
+        CVLOG="consulvault.log"
         LOG="vault.log"
         AUDIT_LOG="vault_audit.log"
     fi
@@ -398,7 +433,7 @@ install_vault () {
         [ -f /usr/local/bootstrap/.vault-token ] && sudo rm /usr/local/bootstrap/.vault-token
 
         #start vault
-        sudo /usr/local/bin/vault server  -dev -dev-listen-address=${IP}:8200 -config=/usr/local/bootstrap/conf/vault.hcl &> ${LOG} &
+        sudo /usr/local/bin/vault server  -dev -dev-listen-address=${IP}:8200 -config=/usr/local/bootstrap/conf/vault.d/vault.hcl &> ${LOG} &
         echo vault started
         sleep 3 
         
