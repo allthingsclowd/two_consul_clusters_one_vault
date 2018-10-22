@@ -456,4 +456,5 @@ install_vault () {
 }
 
 setup_environment
+install_consul_as_backend_for_vault
 install_vault
