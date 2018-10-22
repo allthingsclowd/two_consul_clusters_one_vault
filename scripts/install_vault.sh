@@ -55,20 +55,6 @@ install_consul_as_backend_for_vault () {
   if [[ "${HOSTNAME}" =~ "vault" ]] || [ "${TRAVIS}" == "true" ]; then
     echo "Starting a Consul Server for Vault Use"
 
-    if [ "${TRAVIS}" == "true" ]; then
-      COUNTER=0
-      HOSTURL="http://${IP}:808${COUNTER}/health"
-      sudo cp /usr/local/bootstrap/conf/consul.d/redis.json /etc/consul.d/redis.json
-      CONSUL_SCRIPTS="scripts"
-      # ensure all scripts are executable for consul health checks
-      pushd ${CONSUL_SCRIPTS}
-      for file in `ls`;
-        do
-          sudo chmod +x $file
-        done
-      popd
-    fi
-
     sudo -u consulforvault cp -r /usr/local/bootstrap/conf/consulforvault.d/* /etc/consulforvault.d/.
     sudo -u consulforvault /usr/local/bin/consul agent -server -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -bootstrap-expect=1 >${CVLOG} &
 
@@ -99,7 +85,9 @@ setup_environment () {
     fi
 
     if [ "${TRAVIS}" == "true" ]; then
-    IP=${IP:-127.0.0.1}
+        IP=${IP:-127.0.0.1}
+        VAULT_IP=${IP}
+        LEADER_IP=${IP}
     fi
 
     which /usr/local/bin/vault &>/dev/null || {
