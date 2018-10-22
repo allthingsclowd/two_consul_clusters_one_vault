@@ -20,10 +20,10 @@ register_vault_service_with_SD_consul_cluster () {
 {
     "service":{
     "name": "vault",
-    "address": "${LEADER_IP}",
+    "address": "${VAULT_IP}",
     "port": 8200,
     "check":  {
-        "http": "http://${LEADER_IP}:8200/v1/sys/health",
+        "http": "http://${VAULT_IP}:8200/v1/sys/health",
         "interval": "10s",
         "timeout": "5s"
         }
@@ -470,7 +470,7 @@ install_vault () {
     
     echo 'Start Installation of Vault on Server'
     # verify it's either the TRAVIS server or the Vault server
-    if [[ "${HOSTNAME}" =~ "leader" ]] || [ "${TRAVIS}" == "true" ]; then
+    if [[ "${HOSTNAME}" =~ "vault" ]] || [ "${TRAVIS}" == "true" ]; then
         #lets kill past instance
         create_consulforvault_service_user
         install_consul_as_backend_for_vault

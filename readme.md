@@ -1,4 +1,4 @@
-![https://travis-ci.org/allthingsclowd/web_page_counter.svg?branch=master](https://travis-ci.org/allthingsclowd/web_page_counter.svg?branch=master)
+[![Build Status](https://travis-ci.org/allthingsclowd/two_consul_clusters_one_vault.svg?branch=master)](https://travis-ci.org/allthingsclowd/two_consul_clusters_one_vault)
 
 # Web Page Counter
 
