@@ -5,8 +5,7 @@
 - One Consul Cluster for Vault Storage
 - Second Consul Cluster for SD & KV used by other applications
 
-![image](https://user-images.githubusercontent.com/9472095/47354326-59930780-d6b6-11e8-9165-b97bdfd360a1.png)
-
+![image](https://user-images.githubusercontent.com/9472095/47354788-85fb5380-d6b7-11e8-8e3c-80668ededd38.png)
 
 __WebCounter Application__
 
