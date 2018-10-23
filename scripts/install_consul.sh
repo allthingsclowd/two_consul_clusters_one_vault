@@ -1,5 +1,65 @@
 #!/usr/bin/env bash
 
+create_consulforvault_service_user () {
+  
+  if ! grep consulforvault /etc/passwd >/dev/null 2>&1; then
+    echo "Creating consul user to run the consul service"
+    sudo useradd --system --home /etc/consulforvault.d --shell /bin/false consulforvault
+    sudo mkdir --parents /opt/consulforvault /usr/local/consulforvault /etc/consulforvault.d
+    sudo chown --recursive consulforvault:consulforvault /opt/consulforvault /etc/consulforvault.d /usr/local/consulforvault
+  fi
+
+}
+
+register_vault_service_with_SD_consul_cluster () {
+    
+    echo 'Start to register Vault service with Consul Service Discovery'
+
+    cat <<EOF | sudo tee /etc/consul.d/vaultalternateconsul.json
+{
+    "service":{
+    "name": "vault",
+    "address": "${VAULT_IP}",
+    "port": 8200,
+    "check":  {
+        "http": "http://${VAULT_IP}:8200/v1/sys/health",
+        "interval": "10s",
+        "timeout": "5s"
+        }
+    }
+}
+EOF
+  
+  # Register the service in consul via the local Consul agent api
+  consul reload
+  sleep 5
+
+  # List the locally registered services via local Consul api
+  curl -s \
+    -v \
+    http://127.0.0.1:8500/v1/agent/services | jq -r .
+
+  # List the services regestered on the Consul server
+  curl -s \
+  -v \
+  http://${LEADER_IP}:8500/v1/catalog/services | jq -r .
+   
+    echo 'Register service with Consul Service Discovery Complete'
+}
+
+install_consul_as_backend_for_vault () {
+  AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
+  
+    echo "Starting a Consul Server for Vault Use"
+
+    sudo -u consulforvault cp -r /usr/local/bootstrap/conf/consulforvault.d/* /etc/consulforvault.d/.
+    sudo -u consulforvault /usr/local/bin/consul agent -server -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -bootstrap-expect=1 >${CVLOG} &
+
+    sleep 5
+
+
+  echo "Consul Service for VAULT Started"
+}
 
 create_consul_service_user () {
   
@@ -21,9 +81,13 @@ setup_environment () {
   IP=${CIDR%%/24}
 
   if [ -d /vagrant ]; then
-    LOG="/vagrant/logs/consul_${HOSTNAME}.log"
+      CVLOG="/vagrant/logs/consulforvault_${HOSTNAME}.log"
+      LOG="/vagrant/logs/consul_${HOSTNAME}.log"
+      AUDIT_LOG="/vagrant/logs/consul_audit_${HOSTNAME}.log"
   else
-    LOG="consul.log"
+      CVLOG="consulvault.log"
+      LOG="consul.log"
+      AUDIT_LOG="consul_audit.log"
   fi
 
   if [ "${TRAVIS}" == "true" ]; then
@@ -102,6 +166,11 @@ install_consul () {
         consul kv put "development/$k" $v
 
       done < /usr/local/bootstrap/var.env
+
+      create_consulforvault_service_user
+      install_consul_as_backend_for_vault
+      #register_vault_service_with_SD_consul_cluster
+
     }
   else
     echo "Starting a Consul Agent"
@@ -109,6 +178,18 @@ install_consul () {
       sudo -u consul /usr/local/bin/consul agent -log-level=debug -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consul -join=${LEADER_IP} >${LOG} &
       sleep 10
     }
+      # check for vault hostname to install second consul agent
+    if [[ "${HOSTNAME}" =~ "vault" ]]; then
+      echo "Starting a Consul Agent for Vault Use"
+      create_consulforvault_service_user
+      AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
+
+      sudo -u consulforvault cp -r /usr/local/bootstrap/conf/consulforvault.d/* /etc/consulforvault.d/.
+      sudo -u consulforvault /usr/local/bin/consul agent -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -join=${LEADER_IP} >${CVLOG} &
+
+      sleep 5
+
+    fi
   fi
 
   echo "Consul Service Started"

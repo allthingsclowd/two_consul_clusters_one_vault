@@ -460,8 +460,8 @@ install_vault () {
     # verify it's either the TRAVIS server or the Vault server
     if [[ "${HOSTNAME}" =~ "vault" ]] || [ "${TRAVIS}" == "true" ]; then
         #lets kill past instance
-        create_consulforvault_service_user
-        install_consul_as_backend_for_vault
+        #create_consulforvault_service_user
+        #install_consul_as_backend_for_vault
         sudo killall vault &>/dev/null
 
         #lets delete old consul storage
