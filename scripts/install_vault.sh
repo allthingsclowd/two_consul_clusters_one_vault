@@ -470,12 +470,16 @@ install_vault () {
         #delete old token if present
         [ -f /usr/local/bootstrap/.vault-token ] && sudo rm /usr/local/bootstrap/.vault-token
 
-        #start vault
+        # start vault
         sudo /usr/local/bin/vault server  -dev -dev-listen-address=${IP}:8200 -config=/usr/local/bootstrap/conf/vault.d/vault.hcl &> ${LOG} &
         echo vault started
         sleep 5
+
+        # debug
+        cat ${LOG}
+        sudo find / -name '.vault-token'
         
-        #copy token to known location
+        # copy token to known location
         sudo find / -name '.vault-token' -exec cp {} /usr/local/bootstrap/.vault-token \; -quit
         sudo chmod ugo+r /usr/local/bootstrap/.vault-token
         configure_vault_KV_audit_logs
@@ -483,7 +487,7 @@ install_vault () {
         configure_vault_database_role
         configure_vault_provisioner_role_wrapped
         configure_vault_app_role
-        #revoke_root_token
+        # revoke_root_token
         set_test_secret_data
         get_secret_id
         get_approle_id
