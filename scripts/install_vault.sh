@@ -97,6 +97,7 @@ setup_environment () {
         IP=${IP:-127.0.0.1}
         VAULT_IP=${IP}
         LEADER_IP=${IP}
+        echo "Travis local IP is set to ${IP}""
     fi
 
     which /usr/local/bin/vault &>/dev/null || {
