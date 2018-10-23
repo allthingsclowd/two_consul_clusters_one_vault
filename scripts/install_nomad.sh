@@ -13,6 +13,13 @@ else
   LOG="nomad.log"
 fi
 
+if [ "${TRAVIS}" == "true" ]; then
+    IP=${IP:-127.0.0.1}
+    VAULT_IP=${IP}
+    LEADER_IP=${IP}
+    echo "Travis local IP is set to ${IP}"
+fi
+
 which nomad &>/dev/null || {
   pushd /usr/local/bin
   wget -q https://releases.hashicorp.com/nomad/0.8.6/nomad_0.8.6_linux_amd64.zip

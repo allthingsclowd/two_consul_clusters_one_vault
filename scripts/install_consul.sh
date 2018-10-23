@@ -93,6 +93,8 @@ setup_environment () {
 
   if [ "${TRAVIS}" == "true" ]; then
     IP=${IP:-127.0.0.1}
+    VAULT_IP=${IP}
+    LEADER_IP=${IP}
   fi
 
 }
