@@ -473,8 +473,9 @@ install_vault () {
         #start vault
         sudo /usr/local/bin/vault server  -dev -dev-listen-address=${IP}:8200 -config=/usr/local/bootstrap/conf/vault.d/vault.hcl &> ${LOG} &
         echo vault started
-        sleep 3 
-        
+        sleep 3
+        cat ${LOG}
+        sudo find / -name '.vault-token'
         
         #copy token to known location
         sudo find / -name '.vault-token' -exec cp {} /usr/local/bootstrap/.vault-token \; -quit
