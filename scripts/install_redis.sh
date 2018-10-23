@@ -15,9 +15,10 @@ setup_environment () {
   fi
 
   if [ "${TRAVIS}" == "true" ]; then
-    IP="127.0.0.1"
-    LEADER_IP=${IP}
-    VAULT_IP=${IP}
+      IP=${IP:-127.0.0.1}
+      VAULT_IP=${IP}
+      LEADER_IP=${IP}
+      echo "Travis local IP is set to ${IP}"
   fi
 
 }
