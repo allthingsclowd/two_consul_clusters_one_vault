@@ -11,42 +11,6 @@ create_consulforvault_service_user () {
 
 }
 
-register_vault_service_with_SD_consul_cluster () {
-    
-    echo 'Start to register Vault service with Consul Service Discovery'
-
-    cat <<EOF | sudo tee /etc/consul.d/vaultalternateconsul.json
-{
-    "service":{
-    "name": "vault",
-    "address": "${VAULT_IP}",
-    "port": 8200,
-    "check":  {
-        "http": "http://${VAULT_IP}:8200/v1/sys/health",
-        "interval": "10s",
-        "timeout": "5s"
-        }
-    }
-}
-EOF
-  
-  # Register the service in consul via the local Consul agent api
-  consul reload
-  sleep 5
-
-  # List the locally registered services via local Consul api
-  curl -s \
-    -v \
-    http://127.0.0.1:8500/v1/agent/services | jq -r .
-
-  # List the services regestered on the Consul server
-  curl -s \
-  -v \
-  http://${LEADER_IP}:8500/v1/catalog/services | jq -r .
-   
-    echo 'Register service with Consul Service Discovery Complete'
-}
-
 install_consul_as_backend_for_vault () {
   AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
   

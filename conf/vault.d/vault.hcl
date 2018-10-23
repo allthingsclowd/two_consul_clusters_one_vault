@@ -1,5 +1,5 @@
 storage "consul" {
-  address = "consul.service.dc1.consul:7500"
+  address = "127.0.0.1:7500"
   path    = "vault/"
 }
 
