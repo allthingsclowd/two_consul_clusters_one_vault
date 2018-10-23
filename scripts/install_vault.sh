@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -x
 
+mimic_consul_dns_integration () {
+    # for realworld scenarion please ensure to integrate properly with consul DNS
+    
+    grep 'consul-vs' /etc/hosts &>/dev/null || {
+        sudo echo "${LEADER_IP}     consul-vs.service.consul" >> /etc/hosts
+    }
+
+}
+
 create_consulforvault_service_user () {
   
   if ! grep consulforvault /etc/passwd >/dev/null 2>&1; then
@@ -499,5 +508,6 @@ install_vault () {
 }
 
 setup_environment
+mimic_consul_dns_integration
 install_vault
 

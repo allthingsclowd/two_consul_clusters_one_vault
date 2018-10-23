@@ -1,5 +1,41 @@
 #!/usr/bin/env bash
 
+register_consul_backend_service_in_SD_cluster () {
+    
+    echo 'Start to register Consul Vault Backend with Consul Service Discovery'
+
+    cat <<EOF | sudo tee /etc/consul.d/vaulconsulbackend.json
+{
+    "service":{
+    "name": "consul-vs",
+    "address": "${LEADER_IP}",
+    "port": 7500,
+    "check":  {
+        "http": "http://${LEADER_IP}:7500/v1/health/state/passing",
+        "interval": "10s",
+        "timeout": "5s"
+        }
+    }
+}
+EOF
+  
+  # Register the service in consul via the local Consul agent api
+  consul reload
+  sleep 5
+
+  # List the locally registered services via local Consul api
+  curl -s \
+    -v \
+    http://127.0.0.1:8500/v1/agent/services | jq -r .
+
+  # List the services regestered on the Consul server
+  curl -s \
+  -v \
+  http://${LEADER_IP}:8500/v1/catalog/services | jq -r .
+   
+    echo 'Register Consul Vault Backend with Consul Service Discovery Complete'
+}
+
 create_consulforvault_service_user () {
   
   if ! grep consulforvault /etc/passwd >/dev/null 2>&1; then
@@ -20,6 +56,7 @@ install_consul_as_backend_for_vault () {
     sudo -u consulforvault /usr/local/bin/consul agent -server -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -bootstrap-expect=1 >${CVLOG} &
 
     sleep 5
+    register_consul_backend_service_in_SD_cluster
 
 
   echo "Consul Service for VAULT Started"
@@ -133,7 +170,6 @@ install_consul () {
 
       create_consulforvault_service_user
       install_consul_as_backend_for_vault
-      #register_vault_service_with_SD_consul_cluster
 
     }
   else
@@ -142,18 +178,7 @@ install_consul () {
       sudo -u consul /usr/local/bin/consul agent -log-level=debug -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consul -join=${LEADER_IP} >${LOG} &
       sleep 10
     }
-      # check for vault hostname to install second consul agent
-    if [[ "${HOSTNAME}" =~ "vault" ]]; then
-      echo "Starting a Consul Agent for Vault Use"
-      create_consulforvault_service_user
-      AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
 
-      sudo -u consulforvault cp -r /usr/local/bootstrap/conf/consulforvault.d/* /etc/consulforvault.d/.
-      sudo -u consulforvault /usr/local/bin/consul agent -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -join=${LEADER_IP} >${CVLOG} &
-
-      sleep 5
-
-    fi
   fi
 
   echo "Consul Service Started"
