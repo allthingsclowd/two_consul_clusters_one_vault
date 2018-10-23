@@ -20,10 +20,10 @@ register_vault_service_with_SD_consul_cluster () {
 {
     "service":{
     "name": "vault",
-    "address": "${LEADER_IP}",
+    "address": "${VAULT_IP}",
     "port": 8200,
     "check":  {
-        "http": "http://${LEADER_IP}:8200/v1/sys/health",
+        "http": "http://${VAULT_IP}:8200/v1/sys/health",
         "interval": "10s",
         "timeout": "5s"
         }
@@ -52,22 +52,8 @@ install_consul_as_backend_for_vault () {
   AGENT_CONFIG="-config-dir=/etc/consulforvault.d -enable-script-checks=true"
   
   # check for consul hostname or travis => server
-  if [[ "${HOSTNAME}" =~ "leader" ]] || [ "${TRAVIS}" == "true" ]; then
+  if [[ "${HOSTNAME}" =~ "vault" ]] || [ "${TRAVIS}" == "true" ]; then
     echo "Starting a Consul Server for Vault Use"
-
-    if [ "${TRAVIS}" == "true" ]; then
-      COUNTER=0
-      HOSTURL="http://${IP}:808${COUNTER}/health"
-      sudo cp /usr/local/bootstrap/conf/consul.d/redis.json /etc/consul.d/redis.json
-      CONSUL_SCRIPTS="scripts"
-      # ensure all scripts are executable for consul health checks
-      pushd ${CONSUL_SCRIPTS}
-      for file in `ls`;
-        do
-          sudo chmod +x $file
-        done
-      popd
-    fi
 
     sudo -u consulforvault cp -r /usr/local/bootstrap/conf/consulforvault.d/* /etc/consulforvault.d/.
     sudo -u consulforvault /usr/local/bin/consul agent -server -log-level=debug -ui -client=0.0.0.0 -bind=${IP} ${AGENT_CONFIG} -data-dir=/usr/local/consulforvault -bootstrap-expect=1 >${CVLOG} &
@@ -99,7 +85,9 @@ setup_environment () {
     fi
 
     if [ "${TRAVIS}" == "true" ]; then
-    IP=${IP:-127.0.0.1}
+        IP=${IP:-127.0.0.1}
+        VAULT_IP=${IP}
+        LEADER_IP=${IP}
     fi
 
     which /usr/local/bin/vault &>/dev/null || {
@@ -470,7 +458,7 @@ install_vault () {
     
     echo 'Start Installation of Vault on Server'
     # verify it's either the TRAVIS server or the Vault server
-    if [[ "${HOSTNAME}" =~ "leader" ]] || [ "${TRAVIS}" == "true" ]; then
+    if [[ "${HOSTNAME}" =~ "vault" ]] || [ "${TRAVIS}" == "true" ]; then
         #lets kill past instance
         create_consulforvault_service_user
         install_consul_as_backend_for_vault
@@ -482,13 +470,16 @@ install_vault () {
         #delete old token if present
         [ -f /usr/local/bootstrap/.vault-token ] && sudo rm /usr/local/bootstrap/.vault-token
 
-        #start vault
+        # start vault
         sudo /usr/local/bin/vault server  -dev -dev-listen-address=${IP}:8200 -config=/usr/local/bootstrap/conf/vault.d/vault.hcl &> ${LOG} &
         echo vault started
-        sleep 3 
+        sleep 5
+
+        # debug
+        cat ${LOG}
+        sudo find / -name '.vault-token'
         
-        
-        #copy token to known location
+        # copy token to known location
         sudo find / -name '.vault-token' -exec cp {} /usr/local/bootstrap/.vault-token \; -quit
         sudo chmod ugo+r /usr/local/bootstrap/.vault-token
         configure_vault_KV_audit_logs
@@ -496,7 +487,7 @@ install_vault () {
         configure_vault_database_role
         configure_vault_provisioner_role_wrapped
         configure_vault_app_role
-        #revoke_root_token
+        # revoke_root_token
         set_test_secret_data
         get_secret_id
         get_approle_id

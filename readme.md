@@ -1,7 +1,8 @@
-![https://travis-ci.org/allthingsclowd/web_page_counter.svg?branch=master](https://travis-ci.org/allthingsclowd/web_page_counter.svg?branch=master)
+[![Build Status](https://travis-ci.org/allthingsclowd/two_consul_clusters_one_vault.svg?branch=master)](https://travis-ci.org/allthingsclowd/two_consul_clusters_one_vault)
 
-# Web Page Counter
+# Using Vault with 2 Consul Clusters
 
+- One Consul Cluster 
 ## When all is good it should look like this - 
 
 ![image](https://user-images.githubusercontent.com/9472095/46105006-cbb62080-c1cc-11e8-8f54-6eab4023a5bb.png)

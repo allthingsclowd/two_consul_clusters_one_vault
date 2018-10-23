@@ -51,14 +51,13 @@ EOF
   -v \
   http://${LEADER_IP}:8500/v1/catalog/services | jq -r .
    
-    echo 'Register nginx service with Consul Service Discovery Complete'
+    echo 'Register secret-id service with Consul Service Discovery Complete'
 
 }
 
 IFACE=`route -n | awk '$1 == "192.168.2.0" {print $8}'`
 CIDR=`ip addr show ${IFACE} | awk '$2 ~ "192.168.2" {print $2}'`
 IP=${CIDR%%/24}
-VAULT_IP=${LEADER_IP}
 
 if [ "${TRAVIS}" == "true" ]; then
     IP="127.0.0.1"
