@@ -3,7 +3,7 @@ set -x
 
 mimic_consul_dns_integration () {
     # for realworld scenarion please ensure to integrate properly with consul DNS
-    if [ "${TRAVIS}" == "false" ]; then
+    if [ ! "${TRAVIS}" == "true" ]; then
         grep 'consul-vs' /etc/hosts &>/dev/null || {
             CONSUL_SRV_IP=`sudo dig +short @127.0.0.1 -p 8600 consul-vs.service.consul A`
             CONSUL_SRV_PORT=`sudo dig +short @127.0.0.1 -p 8600 consul-vs.service.consul SRV | awk '{print $3}'`
