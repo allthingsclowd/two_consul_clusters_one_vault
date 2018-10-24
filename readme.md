@@ -31,7 +31,11 @@ vagrant up
 
 ![vault consul - phase 1](https://user-images.githubusercontent.com/9472095/47297619-7a535280-d60d-11e8-8804-e149170dd188.png) 
 
-__WebCounter Application__
+__Demo WebCounter Application__
+
+Application that leverages both Vault and Consul services to ensure everything is working as expected.
+
+Navigate to http://localhost:9091 or http://192.168.2.250:9091
 
 
 ![image](https://user-images.githubusercontent.com/9472095/46106049-92cb7b00-c1cf-11e8-9dcb-75533dd52955.png)
